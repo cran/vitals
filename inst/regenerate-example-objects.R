@@ -32,7 +32,7 @@ regenerate_example_task <- function() {
     target = c("4", "5")
   )
 
-  ch <- chat_anthropic(model = "claude-3-7-sonnet-latest")
+  ch <- chat_claude(model = "claude-sonnet-4-5-20250929")
   tsk <- Task$new(
     dataset = simple_addition,
     solver = generate(ch$set_system_prompt("Respond in the format 'a+b=c'.")),
@@ -46,9 +46,9 @@ regenerate_example_task <- function() {
 regenerate_example_solver <- function() {
   library(ellmer)
 
-  solver <- chat_anthropic(
+  solver <- chat_claude(
     "Respond in the format 'a+b=c'.",
-    model = "claude-3-7-sonnet-latest"
+    model = "claude-sonnet-4-5-20250929"
   )
   solver$chat("What's 2+2?")
 
@@ -58,7 +58,7 @@ regenerate_example_solver <- function() {
 # An R Eval on 1 epoch, via the intro vignette ------------------------
 regenerate_are_1e <- function() {
   json_files <- list.files(
-    "vignettes/data/logs",
+    "vignettes/articles/data/vitals/logs",
     pattern = "\\.json$",
     full.names = TRUE
   )
@@ -97,7 +97,7 @@ regenerate_are_3e_analysis <- function() {
   }
 
   withr::local_envvar(VITALS_SHOULD_EVAL = "true")
-  rmarkdown::render("vignettes/articles/analysis.qmd")
+  rmarkdown::render("vignettes/articles/analysis.Rmd")
 }
 
 regenerate_example_objects()

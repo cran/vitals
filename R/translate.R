@@ -26,7 +26,7 @@ translate_to_eval <- function(
   task,
   task_id,
   task_version = 0,
-  task_file = active_file(),
+  task_file = "",
   task_attribs = c(),
   task_args = c(),
   dataset,
@@ -87,19 +87,25 @@ translate_to_results <- function(
 
 translate_to_plan_steps <- function(name, arguments, system_prompt = NULL) {
   steps <- list()
-  
+
   if (!is.null(system_prompt)) {
-    steps <- append(steps, list(list(
-      solver = "system_message",
-      params = list(template = system_prompt)
-    )))
+    steps <- append(
+      steps,
+      list(list(
+        solver = "system_message",
+        params = list(template = system_prompt)
+      ))
+    )
   }
-  
-  steps <- append(steps, list(list(
-    solver = name,
-    params = arguments
-  )))
-  
+
+  steps <- append(
+    steps,
+    list(list(
+      solver = name,
+      params = arguments
+    ))
+  )
+
   steps
 }
 
@@ -143,13 +149,26 @@ translate_to_sample <- function(sample, scores, timestamps) {
     )
   }
   turns <- chat$get_turns()
+  first_turn <- turns[[1]]
+  input_value <- message_content_from_turn(first_turn)
+  sample_input <- if (is_content_list(input_value)) {
+    list(list(
+      content = input_value,
+      source = "input",
+      role = "user"
+    ))
+  } else {
+    input_value
+  }
   list(
     id = sample$id,
-    epoch = if ("epoch" %in% colnames(sample)) sample$epoch else {
+    epoch = if ("epoch" %in% colnames(sample)) {
+      sample$epoch
+    } else {
       1
     },
-    input = input_string(sample$input[[1]]),
-    target = sample$target,
+    input = sample_input,
+    target = as.character(sample$target),
     messages = translate_to_messages(chat),
     output = translate_to_output(chat),
     scores = dots_list(
@@ -162,6 +181,11 @@ translate_to_sample <- function(sample, scores, timestamps) {
         } else {
           NULL
         },
+        scorer_explanation = if ("scorer_explanation" %in% names(sample)) {
+          sample$scorer_explanation[[1]]
+        } else {
+          NULL
+        },
         metadata = as_metadata(sample[names(sample) == "scorer_metadata"])
       )
     ),
@@ -169,7 +193,6 @@ translate_to_sample <- function(sample, scores, timestamps) {
     store = c(),
     events = translate_to_events(sample = sample, timestamps = timestamps),
     model_usage = sum_model_usage(list(chat)),
-    # TODO: these seem to be prompts passed to the judges
     attachments = c()
   )
 }
@@ -192,13 +215,19 @@ translate_to_score <- function(
   score,
   scorer,
   scorer_chat = NULL,
+  scorer_explanation = NULL,
   metadata
 ) {
   if (is.null(scorer_chat)) {
+    explanation <- if (!is.null(scorer_explanation)) {
+      scorer_explanation
+    } else {
+      scorer
+    }
     return(list(
       value = score,
-      answer = output,
-      explanation = scorer,
+      answer = as.character(output),
+      explanation = explanation,
       metadata = metadata
     ))
   }
@@ -208,7 +237,7 @@ translate_to_score <- function(
 
   list(
     value = score,
-    answer = output,
+    answer = as.character(output),
     explanation = explanation,
     metadata = c(
       list(
@@ -270,25 +299,31 @@ input_string <- function(x) {
 
 # metadata entries must ultimately be a "flattened", named list.
 # note `c()` is interpreted as a named list by jsonlite.
+# we're not interested in recursing here; provide a lossy summary of the object
 as_metadata <- function(x) {
-  if (length(x) == 0) {
-    return(c())
+  result <- if (is.list(x) && !has_class(x)) {
+    x
+  } else if (is.data.frame(x) || (is.atomic(x) && !is.null(names(x)))) {
+    as.list(x)
+  } else {
+    list(capture.output(print(x)))
   }
 
-  if (is.atomic(x)) {
-    return(set_reasonable_names(as.list(x)))
-  }
+  result <- set_reasonable_names(result)
 
-  res <- tryCatch(
-    purrr::list_flatten(as.list(x)),
-    error = function(e) NULL
-  )
+  lapply(result, function(el) {
+    if (!is.list(el)) {
+      el
+    } else if (length(el) == 1 && has_class(el[[1]])) {
+      capture.output(print(el[[1]]))
+    } else {
+      capture.output(if (has_class(el)) print(el) else str(el))
+    }
+  })
+}
 
-  if (is.null(res)) {
-    return(c())
-  }
-
-  set_reasonable_names(res)
+has_class <- function(x) {
+  !is.null(class(x)) && !identical(class(x), "list")
 }
 
 set_reasonable_names <- function(x) {

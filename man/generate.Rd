@@ -7,7 +7,8 @@
 generate(solver_chat = NULL)
 }
 \arguments{
-\item{solver_chat}{An ellmer chat object, such as from \code{\link[ellmer:chat_anthropic]{ellmer::chat_anthropic()}}.}
+\item{solver_chat}{An ellmer chat object, such as from
+\code{\link[ellmer:chat_anthropic]{ellmer::chat_claude()}}, or a zero-argument function that returns one.}
 }
 \value{
 The output of \code{generate()} is another function. That function takes in
@@ -42,7 +43,7 @@ if (!identical(Sys.getenv("ANTHROPIC_API_KEY"), "")) {
   # create a new Task
   tsk <- Task$new(
     dataset = simple_addition,
-    solver = generate(chat_anthropic(model = "claude-3-7-sonnet-latest")),
+    solver = generate(chat_claude(model = "claude-sonnet-4-5-20250929")),
     scorer = model_graded_qa()
   )
 

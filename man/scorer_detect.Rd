@@ -12,7 +12,7 @@
 detect_includes(case_sensitive = FALSE)
 
 detect_match(
-  location = c("end", "begin", "end", "any"),
+  location = c("end", "begin", "any", "exact"),
   case_sensitive = FALSE
 )
 
@@ -25,7 +25,7 @@ detect_answer(format = c("line", "word", "letter"))
 \arguments{
 \item{case_sensitive}{Logical, whether comparisons are case sensitive.}
 
-\item{location}{Where to look for match: one of \code{"begin"}, \code{"end"},
+\item{location}{Where to look for match: one of \code{"end"}, \code{"begin"},
 \code{"any"}, or \code{"exact"}. Defaults to \code{"end"}.}
 
 \item{pattern}{Regular expression pattern to extract answer.}
@@ -76,7 +76,7 @@ if (!identical(Sys.getenv("ANTHROPIC_API_KEY"), "")) {
   # create a new Task
   tsk <- Task$new(
     dataset = simple_addition,
-    solver = generate(solver_chat = chat_anthropic(model = "claude-3-7-sonnet-latest")),
+    solver = generate(solver_chat = chat_claude(model = "claude-sonnet-4-5-20250929")),
     scorer = detect_includes()
   )
 

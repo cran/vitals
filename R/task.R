@@ -86,7 +86,7 @@
 #'   # create a new Task
 #'   tsk <- Task$new(
 #'     dataset = simple_addition,
-#'     solver = generate(chat_anthropic(model = "claude-3-7-sonnet-latest")),
+#'     solver = generate(chat_claude(model = "claude-sonnet-4-5-20250929")),
 #'     scorer = model_graded_qa()
 #'   )
 #'
@@ -184,6 +184,12 @@ Task <- R6::R6Class(
     #' calling `$new()` and then this method on the resulting object.
     #'
     #' @param ... Additional arguments passed to the solver and scorer functions.
+    #' All arguments must be named. Arguments are routed based on function
+    #' signatures: if an argument name matches a parameter in the solver, it goes
+    #' to the solver; if it matches a parameter in the scorer, it goes to the
+    #' scorer. Arguments matching both go to both. Unmatched arguments are passed
+    #' to any function with `...` in its signature. An error is raised if an
+    #' argument matches neither function and neither accepts `...`.
     #' @param view Automatically open the viewer after evaluation (defaults to
     #' TRUE if interactive, FALSE otherwise).
     #'
@@ -195,11 +201,23 @@ Task <- R6::R6Class(
         private$reset_for_new_eval()
       }
 
+      dots <- list(...)
+      if (
+        length(dots) > 0 && (is.null(names(dots)) || any(names(dots) == ""))
+      ) {
+        cli::cli_abort(
+          "All arguments in {.code ...} must be named.",
+          call = call2("$eval()")
+        )
+      }
+
+      split_args <- private$split_dots(dots)
+
       cli::cli_progress_step("Solving")
-      self$solve(..., epochs = epochs)
+      do.call(self$solve, c(split_args$solver, list(epochs = epochs)))
 
       cli::cli_progress_step("Scoring")
-      self$score(...)
+      do.call(self$score, split_args$scorer)
       self$measure()
 
       self$log(self$dir)
@@ -234,6 +252,7 @@ Task <- R6::R6Class(
     #'
     #' @return The Task object (invisibly)
     solve = function(..., epochs = NULL) {
+      withr::local_envvar(IN_VITALS_EVAL = "true")
       check_number_whole(epochs, min = 1, allow_null = TRUE)
 
       if (private$solved) {
@@ -274,6 +293,7 @@ Task <- R6::R6Class(
     #'
     #' @return The Task object (invisibly)
     score = function(...) {
+      withr::local_envvar(IN_VITALS_EVAL = "true")
       if (!private$solved) {
         cli::cli_alert_warning(
           "Task has not been solved yet. Run task$solve() first."
@@ -330,7 +350,7 @@ Task <- R6::R6Class(
     #' @param dir The directory to write the log to.
     #'
     #' @return The path to the logged file, invisibly.
-    log = function(dir = vitals_log_dir()) {
+    log = function(dir = self$dir) {
       if (!private$scored) {
         cli::cli_abort(
           "Task has not been scored yet. Run task$score() first."
@@ -399,14 +419,9 @@ Task <- R6::R6Class(
       )
 
       if (is.na(dir)) {
-        if (!is.na(self$dir)) {
-          dir <- self$dir
-        } else {
-          dir <- tempdir()
-        }
+        dir <- tempdir()
       }
 
-      self$dir <- dir
       log_path <- eval_log_write(eval_log, dir = dir)
 
       invisible(log_path)
@@ -657,6 +672,9 @@ Task <- R6::R6Class(
       if ("scorer_metadata" %in% names(scorer_res)) {
         private$samples$scorer_metadata <- scorer_res$scorer_metadata
       }
+      if ("explanation" %in% names(scorer_res)) {
+        private$samples$scorer_explanation <- scorer_res$explanation
+      }
 
       private$samples$scorer <- private$scores$name
     },
@@ -685,7 +703,10 @@ Task <- R6::R6Class(
         if (any(is.na(numeric_scores))) {
           return()
         }
-        numeric_scores <- numeric_scores / max(numeric_scores, na.rm = TRUE)
+        max_score <- max(numeric_scores, na.rm = TRUE)
+        if (is.finite(max_score) && max_score > 0) {
+          numeric_scores <- numeric_scores / max_score
+        }
         private$metric_results <-
           list2(
             accuracy = logged(accuracy)(numeric_scores)
@@ -719,8 +740,7 @@ Task <- R6::R6Class(
       )
     },
 
-    # log working_time values by pre-computing durations from the Chat
-    # objects before mapping over turns (#97)
+    # log working_time values by extracting them from Turn @duration slots (#115)
     add_working_times = function(samples) {
       samples$solver_chat <- purrr::map(
         samples$solver_chat,
@@ -743,9 +763,7 @@ Task <- R6::R6Class(
       samples
     },
 
-    # log working_start values by estimating timings as if every turn in every
-    # sample took the same amount of time (#112)
-    #
+    # log working_start values by accumulating Turn @duration values (#115)
     add_working_starts = function(samples) {
       samples$solver_chat <- add_working_start_to_turns(
         samples$solver_chat,
@@ -762,6 +780,50 @@ Task <- R6::R6Class(
       }
 
       samples
+    },
+
+    split_dots = function(dots) {
+      solver_fn <- environment(private$solver)$fn
+      scorer_fn <- environment(private$scorer)$fn
+
+      solver_formals <- names(formals(solver_fn))
+      scorer_formals <- names(formals(scorer_fn))
+
+      solver_has_dots <- "..." %in% solver_formals
+      scorer_has_dots <- "..." %in% scorer_formals
+
+      solver_args <- list()
+      scorer_args <- list()
+
+      for (arg_name in names(dots)) {
+        matches_solver <- arg_name %in% solver_formals
+        matches_scorer <- arg_name %in% scorer_formals
+
+        if (matches_solver) {
+          solver_args[[arg_name]] <- dots[[arg_name]]
+        }
+
+        if (matches_scorer) {
+          scorer_args[[arg_name]] <- dots[[arg_name]]
+        }
+
+        if (!matches_solver && !matches_scorer) {
+          if (solver_has_dots) {
+            solver_args[[arg_name]] <- dots[[arg_name]]
+          }
+          if (scorer_has_dots) {
+            scorer_args[[arg_name]] <- dots[[arg_name]]
+          }
+          if (!solver_has_dots && !scorer_has_dots) {
+            cli::cli_abort(
+              "Argument {.arg {arg_name}} does not match any parameter in the solver or scorer functions.",
+              call = call2("$eval()")
+            )
+          }
+        }
+      }
+
+      list(solver = solver_args, scorer = scorer_args)
     },
 
     # The output of `logged(solver)(...)`

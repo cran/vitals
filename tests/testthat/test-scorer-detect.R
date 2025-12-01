@@ -1,4 +1,5 @@
 test_that("detect_includes works", {
+  skip_on_cran()
   tsk <- example_task(scored = FALSE)
   tsk$set_scorer(detect_includes())
   tsk$score()
@@ -16,10 +17,8 @@ test_that("detect_includes works", {
 
   tsk_insensitive <- Task$new(
     dataset = simple_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_insensitive$.__enclos_env__$private$solved <- TRUE
   tsk_insensitive$set_scorer(detect_includes(case_sensitive = FALSE))
@@ -31,10 +30,8 @@ test_that("detect_includes works", {
 
   tsk_sensitive <- Task$new(
     dataset = simple_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_sensitive$.__enclos_env__$private$solved <- TRUE
   tsk_sensitive$set_scorer(detect_includes(case_sensitive = TRUE))
@@ -45,6 +42,7 @@ test_that("detect_includes works", {
 })
 
 test_that("detect_match works", {
+  skip_on_cran()
   tsk <- example_task(scored = FALSE)
   tsk$set_scorer(detect_match())
   tsk$score()
@@ -61,10 +59,8 @@ test_that("detect_match works", {
 
   tsk_insensitive <- Task$new(
     dataset = simple_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_insensitive$.__enclos_env__$private$solved <- TRUE
   tsk_insensitive$set_scorer(detect_match(case_sensitive = FALSE))
@@ -75,10 +71,8 @@ test_that("detect_match works", {
 
   tsk_sensitive <- Task$new(
     dataset = simple_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_sensitive$.__enclos_env__$private$solved <- TRUE
   tsk_sensitive$set_scorer(detect_match(case_sensitive = TRUE))
@@ -89,6 +83,7 @@ test_that("detect_match works", {
 })
 
 test_that("detect_pattern works", {
+  skip_on_cran()
   skip_if(getRversion() > "4.4.3")
   tsk <- example_task(scored = FALSE)
   tsk$set_scorer(detect_pattern("(\\d+)\\s*=\\s*(\\d+)"))
@@ -106,10 +101,8 @@ test_that("detect_pattern works", {
 
   tsk_insensitive <- Task$new(
     dataset = case_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_insensitive$.__enclos_env__$private$solved <- TRUE
   tsk_insensitive$set_scorer(detect_pattern(
@@ -123,10 +116,8 @@ test_that("detect_pattern works", {
 
   tsk_sensitive <- Task$new(
     dataset = case_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_sensitive$.__enclos_env__$private$solved <- TRUE
   tsk_sensitive$set_scorer(detect_pattern(
@@ -149,10 +140,8 @@ test_that("detect_pattern works", {
 
   tsk_all_false <- Task$new(
     dataset = all_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_all_false$.__enclos_env__$private$solved <- TRUE
   tsk_all_false$set_scorer(detect_pattern(
@@ -166,10 +155,8 @@ test_that("detect_pattern works", {
 
   tsk_all_true <- Task$new(
     dataset = all_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_all_true$.__enclos_env__$private$solved <- TRUE
   tsk_all_true$set_scorer(detect_pattern(
@@ -183,6 +170,7 @@ test_that("detect_pattern works", {
 })
 
 test_that("detect_exact works", {
+  skip_on_cran()
   ex_task <- example_task(scored = FALSE)
   exact_df <- tibble::tibble(
     input = ex_task$get_samples()$input,
@@ -192,10 +180,8 @@ test_that("detect_exact works", {
 
   tsk <- Task$new(
     dataset = exact_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk$.__enclos_env__$private$solved <- TRUE
   tsk$set_scorer(detect_exact())
@@ -213,10 +199,8 @@ test_that("detect_exact works", {
 
   tsk_insensitive <- Task$new(
     dataset = case_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_insensitive$.__enclos_env__$private$solved <- TRUE
   tsk_insensitive$set_scorer(detect_exact(case_sensitive = FALSE))
@@ -227,10 +211,8 @@ test_that("detect_exact works", {
 
   tsk_sensitive <- Task$new(
     dataset = case_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_sensitive$.__enclos_env__$private$solved <- TRUE
   tsk_sensitive$set_scorer(detect_exact(case_sensitive = TRUE))
@@ -241,6 +223,7 @@ test_that("detect_exact works", {
 })
 
 test_that("detect_answer works", {
+  skip_on_cran()
   ex_task <- example_task(scored = FALSE)
   answer_df <- tibble::tibble(
     input = ex_task$get_samples()$input,
@@ -250,10 +233,8 @@ test_that("detect_answer works", {
 
   tsk <- Task$new(
     dataset = answer_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk$.__enclos_env__$private$solved <- TRUE
   tsk$set_scorer(detect_answer())
@@ -271,10 +252,8 @@ test_that("detect_answer works", {
 
   tsk_whitespace <- Task$new(
     dataset = whitespace_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_whitespace$.__enclos_env__$private$solved <- TRUE
   tsk_whitespace$set_scorer(detect_answer())
@@ -297,10 +276,8 @@ test_that("detect_answer works", {
 
   tsk_line <- Task$new(
     dataset = format_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_line$.__enclos_env__$private$solved <- TRUE
   tsk_line$set_scorer(detect_answer(format = "line"))
@@ -311,10 +288,8 @@ test_that("detect_answer works", {
 
   tsk_word <- Task$new(
     dataset = format_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_word$.__enclos_env__$private$solved <- TRUE
   tsk_word$set_scorer(detect_answer(format = "word"))
@@ -325,10 +300,8 @@ test_that("detect_answer works", {
 
   tsk_letter <- Task$new(
     dataset = format_df,
-    solver = function() {
-    },
-    scorer = function() {
-    }
+    solver = function() {},
+    scorer = function() {}
   )
   tsk_letter$.__enclos_env__$private$solved <- TRUE
   tsk_letter$set_scorer(detect_answer(format = "letter"))
@@ -338,15 +311,45 @@ test_that("detect_answer works", {
   expect_equal(as.character(tsk_letter$get_samples()$score), c("I", "C"))
 })
 
+test_that("detect scorers generate explanations", {
+  skip_on_cran()
+
+  simple_df <- tibble::tibble(
+    input = c("Question 1", "Question 2"),
+    result = c("4", "wrong answer"),
+    target = c("4", "5")
+  )
+
+  tsk_includes <- Task$new(
+    dataset = simple_df,
+    solver = function() {},
+    scorer = function() {}
+  )
+  tsk_includes$.__enclos_env__$private$solved <- TRUE
+  tsk_includes$set_scorer(detect_includes())
+  tsk_includes$score()
+
+  expect_true("scorer_explanation" %in% names(tsk_includes$get_samples()))
+  expect_equal(length(tsk_includes$get_samples()$scorer_explanation), 2)
+  expect_match(
+    tsk_includes$get_samples()$scorer_explanation[[1]],
+    "Target '4' was found"
+  )
+  expect_match(
+    tsk_includes$get_samples()$scorer_explanation[[2]],
+    "was not found"
+  )
+})
+
 # In general, we test these scorers completely offline and thus don't `log()`
 # as that would require solver chats. Do a "live" test once to ensure that we
 # don't assume scorer chats are available while logging. (#77)
 test_that("vitals writes valid eval logs (basic, claude)", {
-  skip_if(identical(Sys.getenv("OPENAI_API_KEY"), ""))
+  vcr::local_cassette("scorer-detect-valid-log")
+  key_get("OPENAI_API_KEY")
   tmp_dir <- withr::local_tempdir()
   withr::local_envvar(list(VITALS_LOG_DIR = tmp_dir))
-  withr::local_options(cli.default_handler = function(...) {
-  })
+  withr::local_options(cli.default_handler = function(...) {})
   local_mocked_bindings(interactive = function(...) FALSE)
 
   simple_addition <- tibble::tibble(

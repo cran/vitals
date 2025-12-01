@@ -14,7 +14,8 @@ NULL
 
 utils::globalVariables(c(
   "any_of",
-  "chat_anthropic",
+  "capture.output",
+  "chat_claude",
   "everything",
   "head",
   "input",
@@ -29,6 +30,7 @@ utils::globalVariables(c(
   "qnorm",
   "res",
   "setNames",
+  "str",
   "timestamp",
   "var"
 ))

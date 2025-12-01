@@ -5,11 +5,11 @@ translate_to_model_usage <- function(chat) {
 
   dots_list(
     !!model := list(
-      input_tokens = sum(tokens$tokens[tokens$role == "user"]),
+      input_tokens = sum(tokens$input, na.rm = TRUE),
       cache_creation_input_tokens = 0,
-      cache_read_input_tokens = 0,
-      output_tokens = sum(tokens$tokens[tokens$role == "assistant"]),
-      total_tokens = sum(tokens$tokens)
+      cache_read_input_tokens = sum(tokens$cached_input, na.rm = TRUE),
+      output_tokens = sum(tokens$output, na.rm = TRUE),
+      total_tokens = sum(tokens$input, tokens$output, na.rm = TRUE)
     )
   )
 }
@@ -57,21 +57,19 @@ translate_to_output <- function(chat) {
     model = chat$get_model(),
     choices = translate_assistant_choices(last_assistant_turn),
     usage = rename_token_fields(translate_to_model_usage(chat)[[1]]),
-    # TODO: is this the last time or the beginning time in Inspect?
-    # Used to be `last_assistant_turn@completed`, but Inspect gives error:
-    # samples.1.output.time: Input should be a valid number, unable to parse string as a number [type=float_parsing, input_value='2025-03-24 09:18:45', input_type=str]
-    time = 1
+    time = turn_duration(last_assistant_turn)
   )
 }
 
 translate_assistant_choices <- function(turn) {
   text_contents <- first_text_contents(turn)
+  text <- if (!is.null(text_contents)) text_contents@text else ""
   list(list(
     message = list(
       id = generate_id(),
       content = list(list(
         type = "text",
-        text = text_contents@text
+        text = text
       )),
       source = "generate",
       role = turn@role
@@ -88,6 +86,88 @@ first_text_contents <- function(turn) {
   turn_contents <- turn@contents
   is_text <- vapply(turn_contents, inherits, logical(1), "ellmer::ContentText")
   turn_contents[[which(is_text)[1]]]
+}
+
+message_content_from_turn <- function(turn) {
+  contents <- turn@contents
+  if (length(contents) == 0) {
+    return(turn@text)
+  }
+
+  entries <- lapply(contents, translate_ellmer_content)
+  if (length(entries) > 0) {
+    only_text <- all(vapply(
+      entries,
+      function(entry) {
+        is.list(entry) && identical(entry$type, "text")
+      },
+      logical(1)
+    ))
+    if (only_text) {
+      return(turn@text)
+    }
+  }
+
+  entries
+}
+
+translate_ellmer_content <- function(content) {
+  if (inherits(content, "ellmer::ContentText")) {
+    return(list(type = "text", text = content@text))
+  }
+
+  if (inherits(content, "ellmer::ContentImageInline")) {
+    media_type <- content@type %||% "image/png"
+    return(list(
+      type = "image",
+      image = paste0("data:", media_type, ";base64,", content@data)
+    ))
+  }
+
+  if (inherits(content, "ellmer::ContentImageRemote")) {
+    detail <- content@detail %||% "auto"
+    data_uri <- remote_url_to_data_uri(content@url)
+    result <- list(type = "image", image = data_uri)
+    if (!is.null(detail)) {
+      result$detail <- detail
+    }
+    return(result)
+  }
+
+  fallback <- paste0(
+    utils::capture.output(content),
+    collapse = "\n"
+  )
+  list(type = "text", text = fallback)
+}
+
+remote_url_to_data_uri <- function(url) {
+  resp <- httr2::request(url) |>
+    httr2::req_perform()
+
+  content_type <- httr2::resp_content_type(resp)
+  raw_data <- httr2::resp_body_raw(resp)
+
+  base64_data <- jsonlite::base64_enc(raw_data)
+
+  paste0("data:", content_type, ";base64,", base64_data)
+}
+
+is_content_list <- function(x) {
+  if (!is.list(x) || length(x) == 0) {
+    return(FALSE)
+  }
+
+  first <- x[[1]]
+  is.list(first) && !is.null(first$type)
+}
+
+ensure_content_list <- function(content) {
+  if (is_content_list(content)) {
+    return(content)
+  }
+
+  list(list(type = "text", text = as.character(content)))
 }
 
 has_tool_calls <- function(turns) {
@@ -119,16 +199,10 @@ eval_log_filename <- function(eval_log) {
   )
 }
 
-active_file <- function() {
-  if (!rstudioapi::isAvailable()) {
-    return("")
-  }
-
-  active_document <- rstudioapi::getActiveDocumentContext()
-  active_document$path
-}
-
 results_scores <- function(name, metrics) {
+  if (length(metrics) == 0) {
+    metrics <- c()
+  }
   list(list(
     name = name,
     scorer = name,
