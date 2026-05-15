@@ -12,7 +12,9 @@
 #'
 #' @param template Grading template to use--a `glue()` string which will take
 #' substitutions `input`, `answer`, `criterion`, `instructions`.
-#' @param instructions Grading instructions.
+#' @param instructions Grading instructions. If provided, this completely
+#' replaces the default instructions, which specify e.g. how the grader should
+#' format its output (e.g. `"GRADE: C"`).
 #' @param grade_pattern A regex pattern to extract the final grade from the
 #' judge model's response.
 #' @param partial_credit Whether to allow partial credit.
@@ -211,7 +213,7 @@ qa_default_instructions <- function(partial_credit = FALSE) {
     LETTER is one of C{partial_letter}I.
     Please choose ONE option: either 'C' for correct answers, {partial_prompt}
     or 'I' for incorrect answers.
-    First explain your reasoning, then end with GRADE: $LETTER.
+    First **briefly** explain your reasoning, then end with GRADE: $LETTER.
     Do not format the grading string and do not include any punctuation or
     exposition after it."
   )

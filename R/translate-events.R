@@ -108,15 +108,11 @@ translate_events_solver <- function(events, sample, timestamps) {
       next
     }
 
-    # If we're at the last turn or this is a turn with tool requests
-    if (
-      i == length(solver_turns) ||
-        any(sapply(
-          turn@contents,
-          function(ct) inherits(ct, "ellmer::ContentToolRequest")
-        ))
-    ) {
-      events <- c(events, create_model_event(turn, sample))
+    if (turn@role == "assistant") {
+      events <- c(
+        events,
+        create_model_event(turn, sample, timestamp = timestamps$solve$started_at)
+      )
     }
   }
 
@@ -391,7 +387,7 @@ create_solver_begin_event <- function(timestamp) {
   ))
 }
 
-create_model_event <- function(turn, sample) {
+create_model_event <- function(turn, sample, timestamp) {
   user_message_id <- generate_id()
   solver_chat <- sample$solver_chat[[1]]
 
@@ -604,9 +600,9 @@ create_model_event <- function(turn, sample) {
     input = input_messages,
     tools = tools_list,
     tool_choice = if (length(tools_list) > 0) "auto" else "none",
-    config = list(
-      max_tokens = 4096
-    ),
+    config = drop_nulls(list(
+      max_tokens = solver_chat$get_provider()@params$max_tokens
+    )),
     output = list(
       model = solver_chat$get_model(),
       choices = list(
@@ -619,7 +615,7 @@ create_model_event <- function(turn, sample) {
       time = attr(turn, "working_time")
     ),
     call = list(
-      request = list(
+      request = drop_nulls(list(
         messages = request_messages,
         tools = tools_list,
         tool_choice = if (length(tools_list) > 0) {
@@ -628,11 +624,11 @@ create_model_event <- function(turn, sample) {
           "none"
         },
         model = solver_chat$get_model(),
-        max_tokens = 4096,
+        max_tokens = solver_chat$get_provider()@params$max_tokens,
         extra_headers = list(
           `x-irid` = generate_id()
         )
-      ),
+      )),
       response = list(
         id = paste0("msg_", generate_id()),
         content = if (has_tool_calls_in_turn) {
@@ -921,9 +917,9 @@ create_scoring_model_event <- function(turn, sample, timestamp) {
     input = input_messages,
     tools = tools_list,
     tool_choice = if (length(tools_list) > 0) "auto" else "none",
-    config = list(
-      max_tokens = 4096
-    ),
+    config = drop_nulls(list(
+      max_tokens = scorer_chat$get_provider()@params$max_tokens
+    )),
     output = list(
       model = scorer_chat$get_model(),
       choices = list(
@@ -936,7 +932,7 @@ create_scoring_model_event <- function(turn, sample, timestamp) {
       time = attr(turn, "working_time")
     ),
     call = list(
-      request = list(
+      request = drop_nulls(list(
         messages = request_messages,
         tools = tools_list,
         tool_choice = if (length(tools_list) > 0) {
@@ -945,11 +941,11 @@ create_scoring_model_event <- function(turn, sample, timestamp) {
           "none"
         },
         model = scorer_chat$get_model(),
-        max_tokens = 4096,
+        max_tokens = scorer_chat$get_provider()@params$max_tokens,
         extra_headers = list(
           `x-irid` = generate_id()
         )
-      ),
+      )),
       response = list(
         id = paste0("msg_", generate_id()),
         content = if (has_tool_calls_in_turn) {
@@ -1037,6 +1033,10 @@ create_scorer_end_event <- function(timestamp, working_start) {
   ))
 }
 
+drop_nulls <- function(x) {
+  x[!vapply(x, is.null, logical(1))]
+}
+
 # misc helpers -------------------------------------------------------------
 # the events log the timestamp a bit differently than everywhere
 # else in the log
@@ -1044,18 +1044,21 @@ events_timestamp <- function(time) {
   sub(
     pattern = "(\\d{2})(\\d{2})$",
     replacement = "\\1:\\2",
-    x = format(Sys.time(), "%Y-%m-%dT%H:%M:%OS6%z")
+    x = format(time, "%Y-%m-%dT%H:%M:%OS6%z")
   )
 }
 
 turn_tokens <- function(turn) {
   tokens_io <- turn@tokens
 
+  input_tokens <- if (is.na(tokens_io[1])) 0L else as.integer(tokens_io[1])
+  output_tokens <- if (is.na(tokens_io[2])) 0L else as.integer(tokens_io[2])
+
   list(
-    input_tokens = tokens_io[1],
-    input_tokens_cache_write = 0,
-    input_tokens_cache_read = 0,
-    output_tokens = tokens_io[2]
+    input_tokens = input_tokens,
+    input_tokens_cache_write = 0L,
+    input_tokens_cache_read = 0L,
+    output_tokens = output_tokens
   )
 }
 

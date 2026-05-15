@@ -183,14 +183,50 @@ write_log_dir_manifest <- function(log_dir) {
   )
   log_files <- setdiff(log_files, file.path(log_dir, "listing.json"))
 
-  manifest <- lapply(log_files, eval_log_read_headers)
-  manifest <- setNames(manifest, basename(log_files))
+  headers <- lapply(log_files, eval_log_read_headers)
+  overviews <- lapply(headers, log_header_to_overview)
+  manifest <- setNames(overviews, basename(log_files))
+
+  task_ids <- vapply(headers, function(h) h$eval$task_id %||% NA_character_, character(1))
+  if (any(vapply(task_ids, is_old_task_id_format, logical(1)), na.rm = TRUE)) {
+    warn_old_task_id_format()
+  }
 
   jsonlite::write_json(
     manifest,
     manifest_file,
     auto_unbox = TRUE,
     pretty = TRUE
+  )
+}
+
+log_header_to_overview <- function(header) {
+  primary_metric <- NULL
+  if (!is.null(header$results) &&
+      !is.null(header$results$scores) &&
+      nrow(header$results$scores) > 0) {
+    metrics_df <- header$results$scores$metrics[[1]]
+    if (!is.null(metrics_df) && nrow(metrics_df) > 0) {
+      primary_metric <- list(
+        name = metrics_df$name[1],
+        value = metrics_df$value[1],
+        params = as.list(metrics_df$params[1, , drop = FALSE])
+      )
+    }
+  }
+
+  list(
+    eval_id = header$eval$eval_id,
+    run_id = header$eval$run_id,
+    task = header$eval$task,
+    task_id = header$eval$task_id,
+    task_version = header$eval$task_version,
+    version = header$version,
+    status = header$status,
+    model = header$eval$model,
+    started_at = header$eval$created,
+    completed_at = if (!is.null(header$stats)) header$stats$completed_at else NULL,
+    primary_metric = primary_metric
   )
 }
 
