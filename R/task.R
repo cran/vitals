@@ -163,10 +163,12 @@ Task <- R6::R6Class(
       scorer,
       metrics = NULL,
       epochs = NULL,
-      name = deparse(substitute(dataset)),
+      name = NULL,
       dir = vitals_log_dir()
     ) {
-      force(name)
+      if (is.null(name)) {
+        name <- task_dataset_name(substitute(dataset))
+      }
 
       solver_name <- deparse(substitute(solver))
       scorer_name <- deparse(substitute(scorer))
@@ -411,7 +413,7 @@ Task <- R6::R6Class(
             sample_ids = as.list(seq_len(length(unique(samples$id)))),
             shuffled = FALSE
           ),
-          model = private$solver_description(),
+          model = chat_provider_model(samples$solver_chat[[1]]),
           scorers = translate_to_eval_scorers(
             name = samples$scorer[[1]]
           )
@@ -445,11 +447,17 @@ Task <- R6::R6Class(
         )
       )
 
-      if (is.na(dir)) {
+      used_tempdir <- is.na(dir)
+      if (used_tempdir) {
         dir <- tempdir()
       }
+      self$dir <- dir
 
       log_path <- eval_log_write(eval_log, dir = dir)
+
+      if (used_tempdir) {
+        cli::cli_inform("Log written to {.file {log_path}}")
+      }
 
       invisible(log_path)
     },
@@ -1055,4 +1063,11 @@ numeric_price <- function(price) {
   result <- as.numeric(gsub("\\$", "", price))
   result[is.na(result)] <- 0
   result
+}
+
+task_dataset_name <- function(expr) {
+  if (is.symbol(expr)) {
+    return(deparse(expr))
+  }
+  "dataset"
 }

@@ -1,3 +1,71 @@
+mock_chat_template <- function(model = "placeholder", ...) {
+  ellmer::chat_openai_compatible(
+    base_url = "https://example.com",
+    model = model,
+    credentials = function() "fake-key",
+    ...
+  )
+}
+
+example_tool_fixture <- function() {
+  tool_def <- ellmer::tool(
+    function(a, b) a + b,
+    name = "add",
+    description = "Add two numbers.",
+    arguments = list(
+      a = ellmer::type_number("First number."),
+      b = ellmer::type_number("Second number.")
+    )
+  )
+
+  request <- ellmer::ContentToolRequest(
+    id = "call_1",
+    name = "add",
+    arguments = list(a = 1, b = 2),
+    tool = tool_def
+  )
+
+  chat <- mock_chat_template(model = "test-model", system_prompt = "Be terse.")
+  chat$register_tool(tool_def)
+  chat$set_turns(list(
+    ellmer::UserTurn("What is 1 + 2?"),
+    assistant_turn(
+      contents = list(
+        ellmer::ContentThinking(
+          thinking = "I should use the tool.",
+          extra = list(signature = "sig")
+        ),
+        ellmer::ContentText("Let me add those."),
+        request
+      ),
+      tokens = c(10, 5, 3),
+      duration = 1.5,
+      finish_reason = "tool_use"
+    ),
+    ellmer::UserTurn(contents = list(
+      ellmer::ContentToolResult(value = 3, request = request)
+    )),
+    assistant_turn(
+      contents = list(ellmer::ContentText("The answer is 3.")),
+      tokens = c(20, 6, 10),
+      duration = 0.7,
+      finish_reason = "success"
+    )
+  ))
+
+  task <- Task$new(
+    dataset = tibble(input = "What is 1 + 2?", target = "3"),
+    solver = function(inputs) {
+      list(result = "The answer is 3.", solver_chat = list(chat))
+    },
+    scorer = function(samples) {
+      list(score = factor("C", levels = c("I", "C"), ordered = TRUE))
+    }
+  )
+
+  list(task = task, tool_def = tool_def)
+}
+
 mock_chat_turns <- function(..., system_prompt = NULL, model = "test-model") {
   chat <- ellmer::chat_openai_compatible(
     base_url = "https://example.com",
@@ -29,13 +97,25 @@ example_ellmer_solver <- function() {
 # a log actually written by Python Inspect
 example_inspect_log <- function() {
   log_path <- system.file(
-    "test/inspect/logs/2025-03-24T10-39-36-05-00_simple-arithmetic_fQ9mYnqZFhtEuUenPpJgKL.json",
+    "test/inspect/logs/simple-arithmetic.json",
     package = "vitals"
   )
   if (identical(log_path, "")) {
     testthat::skip("Test log files not available")
   }
   eval_log_read(log_path)
+}
+
+example_claude_code_log <- function() {
+  log_path <- system.file(
+    "test/inspect/logs",
+    "2026-07-25T12-57-47-00-00_claude-code_boWWx32BT72g5mJWxzeEDN.json",
+    package = "vitals"
+  )
+  if (identical(log_path, "")) {
+    testthat::skip("Test log files not available")
+  }
+  log_path
 }
 
 example_task <- function(solved = TRUE, scored = TRUE) {
@@ -73,6 +153,7 @@ example_task <- function(solved = TRUE, scored = TRUE) {
 
   res$.__enclos_env__$private$samples$score <- tsk$get_samples()$score
   res$.__enclos_env__$private$samples$scorer_chat <- tsk$get_samples()$scorer_chat
+  res$.__enclos_env__$private$samples$scorer <- tsk$get_samples()$scorer
   res$.__enclos_env__$private$scored <- TRUE
 
   res
