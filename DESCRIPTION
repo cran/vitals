@@ -1,6 +1,6 @@
 Package: vitals
 Title: Large Language Model Evaluation
-Version: 0.4.0
+Version: 0.4.1
 Authors@R: c(
     person("Simon", "Couch", , "simon.couch@posit.co", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-5676-5107")),
@@ -23,8 +23,8 @@ BugReports: https://github.com/tidyverse/vitals/issues
 Depends: R (>= 4.1)
 Imports: cli, dplyr, ellmer (>= 0.4.1), glue, httpuv, jsonlite, purrr,
         R6, rlang, S7, tibble, tidyr, withr
-Suggests: ggplot2, here, htmltools, knitr, magick, ordinal, reticulate
-        (>= 1.41), rmarkdown, testthat (>= 3.0.0), vcr (>= 2.0.0)
+Suggests: ggplot2, here, htmltools, httr2 (>= 1.2.0), knitr, magick,
+        ordinal, reticulate (>= 1.41), rmarkdown, testthat (>= 3.0.0)
 Config/Needs/website: tidyverse/tidytemplate, rmarkdown, btw,
         tidyverse, gt, brms, RcppEigen, broom, gt
 Config/testthat/edition: 3
@@ -35,7 +35,7 @@ Encoding: UTF-8
 LazyData: true
 Config/roxygen2/version: 8.0.0
 NeedsCompilation: no
-Packaged: 2026-09-02 18:18:15 UTC; simoncouch
+Packaged: 2026-11-09 16:14:23 UTC; simoncouch
 Author: Simon Couch [aut, cre] (ORCID: <https://orcid.org/0000-0001-5676-5107>),
   Max Kuhn [ctb],
   Hadley Wickham [ctb] (ORCID: <https://orcid.org/0000-0003-4757-117X>),
@@ -44,4 +44,4 @@ Author: Simon Couch [aut, cre] (ORCID: <https://orcid.org/0000-0001-5676-5107>),
   Posit Software, PBC [cph, fnd] (ROR: <https://ror.org/03wc8by49>)
 Maintainer: Simon Couch <simon.couch@posit.co>
 Repository: CRAN
-Date/Publication: 2026-09-02 18:40:02 UTC
+Date/Publication: 2026-11-10 08:10:02 UTC
